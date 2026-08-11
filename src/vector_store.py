@@ -5,7 +5,11 @@ from src.embeddings import embed_texts
 
 class VectorStore:
     def __init__(self):
-        self.client = chromadb.Client(Settings(chroma_db_impl="duckdb+parquet", persist_directory=CHROMA_PERSIST_DIRECTORY))
+        settings = Settings(
+            persist_directory=str(CHROMA_PERSIST_DIRECTORY),
+            is_persistent=True,
+        )
+        self.client = chromadb.Client(settings=settings)
         self.collection = self._get_collection(CHROMA_COLLECTION_NAME)
 
     def _get_collection(self, name):
@@ -25,7 +29,6 @@ class VectorStore:
             ids=ids,
             embeddings=embeddings,
         )
-        self.client.persist()
 
     def search(self, query, k=TOP_K):
         query_embedding = embed_texts([query])[0]
