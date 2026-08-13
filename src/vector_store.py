@@ -51,16 +51,7 @@ class VectorStore:
         return hits
 
     def delete_by_source(self, source_name):
-        query = {"metadata": {"source": source_name}}
         try:
-            existing = self.collection.query(
-                query={"metadata": {"source": source_name}},
-                include=["ids"],
-                n_results=1000,
-            )
-            ids = existing.get("ids", [[]])[0]
-            if ids:
-                self.collection.delete(ids=ids)
-                self.client.persist()
+            self.collection.delete(where={"source": source_name})
         except Exception:
             pass
