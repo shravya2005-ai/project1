@@ -3,7 +3,7 @@ import streamlit as st
 from pathlib import Path
 from datetime import datetime
 
-from config import UPLOAD_DIR, OPENAI_API_KEY
+from config import UPLOAD_DIR, OPENAI_API_KEY, LLM_BACKEND
 from src.chat_history import ChatHistory
 from src.document_processor import extract_texts_from_file, SUPPORTED_EXTENSIONS
 from src.vector_store import VectorStore
@@ -15,8 +15,10 @@ st.set_page_config(
     layout="wide",
 )
 
-if not OPENAI_API_KEY:
-    st.sidebar.error("Set OPENAI_API_KEY in .env before using the app.")
+if LLM_BACKEND == "openai" and not OPENAI_API_KEY:
+    st.sidebar.error("Set OPENAI_API_KEY in .env before using the app, or switch to LLM_BACKEND=local.")
+else:
+    st.sidebar.info(f"LLM backend: {LLM_BACKEND.upper()}")
 
 storage = VectorStore()
 history = ChatHistory()

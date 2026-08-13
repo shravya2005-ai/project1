@@ -6,3 +6,5 @@ chromadb
 openai
 python-dotenv
 langchain
+transformers
+torch
