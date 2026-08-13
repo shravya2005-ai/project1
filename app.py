@@ -1,4 +1,5 @@
 import os
+import re
 import streamlit as st
 from pathlib import Path
 from datetime import datetime
@@ -14,6 +15,65 @@ st.set_page_config(
     page_icon="📄",
     layout="wide",
 )
+
+def sanitize_markdown_answer(text: str) -> str:
+    if not text:
+        return text
+
+    text = re.sub(r"\[\]\(https?://localhost:\d+/#?[A-Za-z0-9\-_]+\)", "", text)
+    text = re.sub(r"\[\]\(#[A-Za-z0-9\-_]+\)", "", text)
+    text = re.sub(r"\s+\[\]\(.*?\)", "", text)
+    return text.strip()
+
+
+def markdown_to_html(text: str) -> str:
+    text = sanitize_markdown_answer(text)
+    if not text:
+        return ""
+
+    lines = text.splitlines()
+    html_lines = []
+    in_list = False
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            continue
+
+        if stripped.startswith("## "):
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            html_lines.append(f"<h2>{stripped[3:]}</h2>")
+            continue
+
+        if stripped.startswith("### "):
+            if in_list:
+                html_lines.append("</ul>")
+                in_list = False
+            html_lines.append(f"<h3>{stripped[4:]}</h3>")
+            continue
+
+        if stripped.startswith("- "):
+            if not in_list:
+                html_lines.append("<ul>")
+                in_list = True
+            html_lines.append(f"<li>{stripped[2:]}</li>")
+            continue
+
+        if in_list:
+            html_lines.append("</ul>")
+            in_list = False
+
+        html_lines.append(f"<p>{stripped}</p>")
+
+    if in_list:
+        html_lines.append("</ul>")
+
+    return "\n".join(html_lines)
 
 st.markdown(
     """
@@ -188,7 +248,7 @@ if st.button("Ask"):
                 sources=list(dict.fromkeys(sources)),
             )
             st.markdown("### Answer")
-            st.markdown(answer)
+            st.markdown(markdown_to_html(answer), unsafe_allow_html=True)
 
             st.markdown("### Source excerpts")
             for item in results:
