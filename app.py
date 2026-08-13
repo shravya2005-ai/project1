@@ -15,6 +15,81 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    .stApp { background: linear-gradient(135deg, #07111f 0%, #0d1b2a 35%, #16263b 100%); }
+    div[data-testid="stSidebar"] { background: rgba(18, 26, 39, 0.9); border-right: 1px solid rgba(255,255,255,0.08); }
+    .block-container { padding-top: 2rem; padding-bottom: 2rem; }
+    .hero {
+        background: linear-gradient(135deg, rgba(43, 123, 255, 0.22), rgba(122, 92, 255, 0.12));
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 2rem 2rem 1.5rem 2rem;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.18);
+        margin-bottom: 1.5rem;
+    }
+    .hero h1 { color: #f7fbff; font-size: 2.5rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .hero p { color: #d9e5f7; font-size: 1rem; }
+    .status-card {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+    }
+    .source-box {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 12px;
+        padding: 0.8rem 1rem;
+        margin-top: 0.6rem;
+    }
+    div[data-testid="stMarkdownContainer"] {
+        background: rgba(15, 30, 44, 0.9);
+        border: 1px solid rgba(110, 176, 255, 0.35);
+        border-radius: 18px;
+        padding: 1.2rem 1.1rem;
+        margin-top: 1rem;
+        color: #edf5ff;
+    }
+    div[data-testid="stMarkdownContainer"] h1,
+    div[data-testid="stMarkdownContainer"] h2,
+    div[data-testid="stMarkdownContainer"] h3,
+    div[data-testid="stMarkdownContainer"] h4 {
+        color: #ffffff;
+        margin-top: 0.3rem;
+        margin-bottom: 0.6rem;
+    }
+    div[data-testid="stMarkdownContainer"] p,
+    div[data-testid="stMarkdownContainer"] li {
+        color: #dfeeff;
+        font-size: 0.98rem;
+        line-height: 1.7;
+    }
+    .stButton > button {
+        background: linear-gradient(135deg, #4f8cff 0%, #6d5ef5 100%);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 0.55rem 1.1rem;
+    }
+    .stTextInput > div > div > input {
+        background: rgba(255,255,255,0.04);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 10px;
+    }
+    .stFileUploader > div { background: rgba(255,255,255,0.03); border-radius: 12px; }
+    .stCheckbox { color: #eaf2ff; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 if LLM_BACKEND == "openai" and not OPENAI_API_KEY:
     st.sidebar.error("Set OPENAI_API_KEY in .env before using the app, or switch to LLM_BACKEND=local.")
 else:
@@ -69,9 +144,14 @@ for doc in st.session_state.uploaded_files:
 st.sidebar.markdown("---")
 answer_only = st.sidebar.checkbox("Answer only from uploaded documents", value=True)
 
-st.title("RAG-Based Document Assistant")
-st.write(
-    "Upload documents, then ask questions about their contents. The assistant retrieves the best document excerpts and answers using OpenAI."
+st.markdown(
+    """
+    <div class="hero">
+        <h1>RAG Document Assistant</h1>
+        <p>Upload notes, PDFs, and study materials, then ask natural-language questions to get grounded answers from your documents.</p>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
 
 question = st.text_input("Ask a question", key="question_input")
@@ -104,16 +184,17 @@ if st.button("Ask"):
                 sources=list(dict.fromkeys(sources)),
             )
             st.markdown("### Answer")
-            st.write(answer)
+            st.markdown(answer)
 
             st.markdown("### Source excerpts")
             for item in results:
                 metadata = item["metadata"]
-                st.write(
-                    f"**{metadata.get('source')}" 
+                st.markdown(
+                    f"<div class='source-box'><strong>{metadata.get('source')}</strong>"
                     + (f" – page {metadata.get('page')}" if metadata.get("page") else "")
+                    + f"<br>{item['document']}</div>",
+                    unsafe_allow_html=True,
                 )
-                st.write(item["document"])
 
             st.session_state.conversation.append({"question": question, "answer": answer, "sources": list(dict.fromkeys(sources))})
             history.save_message("user", question)
@@ -123,6 +204,7 @@ if st.session_state.conversation:
     st.markdown("---")
     st.subheader("Conversation history")
     for turn in st.session_state.conversation[::-1]:
-        st.markdown(f"**Q:** {turn['question']}")
-        st.markdown(f"**A:** {turn['answer']}")
-        st.markdown(f"**Sources:** {', '.join(turn['sources'])}")
+        st.markdown(
+            f"<div class='status-card'><strong>Q:</strong> {turn['question']}<br><strong>A:</strong> {turn['answer']}<br><strong>Sources:</strong> {', '.join(turn['sources'])}</div>",
+            unsafe_allow_html=True,
+        )
