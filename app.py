@@ -20,71 +20,75 @@ st.markdown(
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    .stApp { background: linear-gradient(135deg, #07111f 0%, #0d1b2a 35%, #16263b 100%); }
-    div[data-testid="stSidebar"] { background: rgba(18, 26, 39, 0.9); border-right: 1px solid rgba(255,255,255,0.08); }
+    .stApp { background: linear-gradient(135deg, #f5f8ff 0%, #edf4ff 35%, #f9fbff 100%); }
+    div[data-testid="stSidebar"] { background: rgba(255,255,255,0.9); border-right: 1px solid rgba(103, 116, 148, 0.15); }
     .block-container { padding-top: 2rem; padding-bottom: 2rem; }
     .hero {
-        background: linear-gradient(135deg, rgba(43, 123, 255, 0.22), rgba(122, 92, 255, 0.12));
-        border: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(135deg, rgba(72, 118, 255, 0.14), rgba(139, 92, 246, 0.08));
+        border: 1px solid rgba(72, 118, 255, 0.12);
         border-radius: 20px;
         padding: 2rem 2rem 1.5rem 2rem;
-        box-shadow: 0 20px 45px rgba(0,0,0,0.18);
+        box-shadow: 0 18px 40px rgba(31, 66, 135, 0.08);
         margin-bottom: 1.5rem;
     }
-    .hero h1 { color: #f7fbff; font-size: 2.5rem; font-weight: 800; margin-bottom: 0.4rem; }
-    .hero p { color: #d9e5f7; font-size: 1rem; }
+    .hero h1 { color: #172033; font-size: 2.5rem; font-weight: 800; margin-bottom: 0.4rem; }
+    .hero p { color: #46546d; font-size: 1rem; }
     .status-card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: rgba(255,255,255,0.9);
+        border: 1px solid rgba(90, 107, 145, 0.12);
         border-radius: 16px;
         padding: 1rem 1.1rem;
         margin-bottom: 1rem;
+        box-shadow: 0 6px 18px rgba(16, 24, 40, 0.04);
     }
     .source-box {
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.08);
+        background: #f8faff;
+        border: 1px solid rgba(90, 107, 145, 0.12);
         border-radius: 12px;
         padding: 0.8rem 1rem;
         margin-top: 0.6rem;
+        color: #1d2a3d;
     }
     div[data-testid="stMarkdownContainer"] {
-        background: rgba(15, 30, 44, 0.9);
-        border: 1px solid rgba(110, 176, 255, 0.35);
+        background: #ffffff;
+        border: 1px solid rgba(86, 120, 255, 0.18);
         border-radius: 18px;
         padding: 1.2rem 1.1rem;
         margin-top: 1rem;
-        color: #edf5ff;
+        color: #1a2438;
+        box-shadow: 0 10px 24px rgba(31, 66, 135, 0.05);
     }
     div[data-testid="stMarkdownContainer"] h1,
     div[data-testid="stMarkdownContainer"] h2,
     div[data-testid="stMarkdownContainer"] h3,
     div[data-testid="stMarkdownContainer"] h4 {
-        color: #ffffff;
+        color: #1a2438;
         margin-top: 0.3rem;
         margin-bottom: 0.6rem;
     }
     div[data-testid="stMarkdownContainer"] p,
     div[data-testid="stMarkdownContainer"] li {
-        color: #dfeeff;
+        color: #2d3b52;
         font-size: 0.98rem;
         line-height: 1.7;
     }
     .stButton > button {
-        background: linear-gradient(135deg, #4f8cff 0%, #6d5ef5 100%);
+        background: linear-gradient(135deg, #3b82f6 0%, #6d5ef5 100%);
         color: white;
         border: none;
         border-radius: 10px;
         font-weight: 600;
         padding: 0.55rem 1.1rem;
+        box-shadow: 0 8px 18px rgba(59, 130, 246, 0.2);
     }
     .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.04);
-        color: white;
-        border: 1px solid rgba(255,255,255,0.12);
+        background: rgba(255,255,255,0.9);
+        color: #1b2433;
+        border: 1px solid rgba(104, 120, 150, 0.25);
         border-radius: 10px;
     }
-    .stFileUploader > div { background: rgba(255,255,255,0.03); border-radius: 12px; }
-    .stCheckbox { color: #eaf2ff; }
+    .stFileUploader > div { background: rgba(255,255,255,0.7); border-radius: 12px; }
+    .stCheckbox { color: #22314d; }
     </style>
     """,
     unsafe_allow_html=True,
