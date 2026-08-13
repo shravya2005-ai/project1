@@ -6,7 +6,7 @@ from datetime import datetime
 
 from config import UPLOAD_DIR, OPENAI_API_KEY, LLM_BACKEND
 from src.chat_history import ChatHistory
-from src.document_processor import extract_texts_from_file, SUPPORTED_EXTENSIONS
+from src.document_processor import extract_texts_from_file, extract_pdf_diagrams, SUPPORTED_EXTENSIONS
 from src.vector_store import VectorStore
 from src.llm import answer_question
 
@@ -162,9 +162,6 @@ else:
 storage = VectorStore()
 history = ChatHistory()
 
-if "conversation" not in st.session_state:
-    st.session_state.conversation = []
-
 if "uploaded_files" not in st.session_state:
     st.session_state.uploaded_files = history.list_documents()
 
@@ -219,6 +216,18 @@ st.markdown(
 )
 
 question = st.text_input("Ask a question", key="question_input")
+answer_length = st.radio(
+    "Answer style",
+    options=[
+        ("Short", "Quick revision"),
+        ("Medium", "Balanced summary"),
+        ("Detailed", "Full explanation"),
+    ],
+    index=1,
+    horizontal=True,
+    format_func=lambda x: x[0] if isinstance(x, tuple) else x,
+)
+answer_length = answer_length[0] if isinstance(answer_length, tuple) else answer_length
 if st.button("Ask"):
     if not question.strip():
         st.warning("Please enter a question.")
@@ -246,9 +255,31 @@ if st.button("Ask"):
                 joined_context,
                 answer_only_from_docs=answer_only,
                 sources=list(dict.fromkeys(sources)),
+                answer_length=answer_length,
             )
             st.markdown("### Answer")
             st.markdown(markdown_to_html(answer), unsafe_allow_html=True)
+
+            source_map = {name: path for name, path in history.list_documents()}
+            diagram_items = []
+            for source_name in list(dict.fromkeys(sources)):
+                source_path = source_map.get(source_name)
+                if not source_path:
+                    continue
+                try:
+                    docs = extract_pdf_diagrams(Path(source_path), max_images=3)
+                    diagram_items.extend(docs)
+                except Exception:
+                    continue
+
+            if diagram_items:
+                st.markdown("### Diagrams")
+                for diagram in diagram_items:
+                    st.image(
+                        diagram["image_bytes"],
+                        caption=f"{diagram['source']} — page {diagram['page']}",
+                        use_container_width=True,
+                    )
 
             st.markdown("### Source excerpts")
             for item in results:
@@ -259,16 +290,3 @@ if st.button("Ask"):
                     + f"<br>{item['document']}</div>",
                     unsafe_allow_html=True,
                 )
-
-            st.session_state.conversation.append({"question": question, "answer": answer, "sources": list(dict.fromkeys(sources))})
-            history.save_message("user", question)
-            history.save_message("assistant", answer)
-
-if st.session_state.conversation:
-    st.markdown("---")
-    st.subheader("Conversation history")
-    for turn in st.session_state.conversation[::-1]:
-        st.markdown(
-            f"<div class='status-card'><strong>Q:</strong> {turn['question']}<br><strong>A:</strong> {turn['answer']}<br><strong>Sources:</strong> {', '.join(turn['sources'])}</div>",
-            unsafe_allow_html=True,
-        )

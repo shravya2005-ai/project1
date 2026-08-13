@@ -3,6 +3,40 @@ import docx
 from pathlib import Path
 from typing import List, Dict
 
+
+def extract_pdf_diagrams(path: Path, max_images: int = 6) -> List[Dict]:
+    if not path.exists() or path.suffix.lower() != ".pdf":
+        return []
+
+    diagrams: List[Dict] = []
+    doc = fitz.open(path)
+    for page_num in range(len(doc)):
+        page = doc.load_page(page_num)
+        image_refs = page.get_images(full=True)
+        if not image_refs:
+            continue
+
+        for img_index, img in enumerate(image_refs[:max_images]):
+            try:
+                xref = img[0]
+                pix = fitz.Pixmap(doc, xref)
+                if pix.n_channels == 4:
+                    pix = fitz.Pixmap(fitz.csRGB, pix)
+                image_bytes = pix.tobytes("png")
+                diagrams.append(
+                    {
+                        "source": path.name,
+                        "page": page_num + 1,
+                        "image_index": img_index + 1,
+                        "image_bytes": image_bytes,
+                    }
+                )
+                pix = None
+            except Exception:
+                continue
+
+    return diagrams
+
 SUPPORTED_EXTENSIONS = ["pdf", "docx", "txt"]
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
