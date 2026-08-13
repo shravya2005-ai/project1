@@ -10,30 +10,49 @@ def extract_pdf_diagrams(path: Path, max_images: int = 6) -> List[Dict]:
 
     diagrams: List[Dict] = []
     doc = fitz.open(path)
-    for page_num in range(len(doc)):
+    total_pages = min(len(doc), 6)
+
+    for page_num in range(total_pages):
         page = doc.load_page(page_num)
         image_refs = page.get_images(full=True)
-        if not image_refs:
-            continue
+        if image_refs:
+            for img_index, img in enumerate(image_refs[:max(1, max_images // max(1, total_pages))]):
+                try:
+                    xref = img[0]
+                    pix = fitz.Pixmap(doc, xref)
+                    if pix.n_channels == 4:
+                        pix = fitz.Pixmap(fitz.csRGB, pix)
+                    image_bytes = pix.tobytes("png")
+                    diagrams.append(
+                        {
+                            "source": path.name,
+                            "page": page_num + 1,
+                            "image_index": img_index + 1,
+                            "image_bytes": image_bytes,
+                        }
+                    )
+                    pix = None
+                except Exception:
+                    continue
+                if len(diagrams) >= max_images:
+                    return diagrams
 
-        for img_index, img in enumerate(image_refs[:max_images]):
+        if not image_refs or len(diagrams) < max_images:
             try:
-                xref = img[0]
-                pix = fitz.Pixmap(doc, xref)
-                if pix.n_channels == 4:
-                    pix = fitz.Pixmap(fitz.csRGB, pix)
-                image_bytes = pix.tobytes("png")
+                page_pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
                 diagrams.append(
                     {
                         "source": path.name,
                         "page": page_num + 1,
-                        "image_index": img_index + 1,
-                        "image_bytes": image_bytes,
+                        "image_index": 1,
+                        "image_bytes": page_pix.tobytes("png"),
                     }
                 )
-                pix = None
             except Exception:
                 continue
+
+        if len(diagrams) >= max_images:
+            break
 
     return diagrams
 

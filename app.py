@@ -219,9 +219,9 @@ question = st.text_input("Ask a question", key="question_input")
 answer_length = st.radio(
     "Answer style",
     options=[
-        ("Short", "Quick revision"),
-        ("Medium", "Balanced summary"),
-        ("Detailed", "Full explanation"),
+        ("Short", "2 mark answer"),
+        ("Medium", "5 mark answer"),
+        ("Detailed", "10 mark answer"),
     ],
     index=1,
     horizontal=True,
@@ -257,7 +257,7 @@ if st.button("Ask"):
                 sources=list(dict.fromkeys(sources)),
                 answer_length=answer_length,
             )
-            st.markdown("### Answer")
+            st.markdown("### AI extracted content")
             st.markdown(markdown_to_html(answer), unsafe_allow_html=True)
 
             source_map = {name: path for name, path in history.list_documents()}
@@ -273,7 +273,7 @@ if st.button("Ask"):
                     continue
 
             if diagram_items:
-                st.markdown("### Diagrams")
+                st.markdown("### Diagram / PDF visual")
                 for diagram in diagram_items:
                     st.image(
                         diagram["image_bytes"],
@@ -281,7 +281,7 @@ if st.button("Ask"):
                         use_container_width=True,
                     )
 
-            st.markdown("### Source excerpts")
+            st.markdown("### PDF content preview")
             for item in results:
                 metadata = item["metadata"]
                 st.markdown(
@@ -290,3 +290,10 @@ if st.button("Ask"):
                     + f"<br>{item['document']}</div>",
                     unsafe_allow_html=True,
                 )
+
+            st.markdown("### Supporting document text")
+            for item in results:
+                metadata = item["metadata"]
+                full_text = item["document"]
+                if full_text:
+                    st.write(f"{metadata.get('source')} — page {metadata.get('page', 'N/A')}: {full_text}")
