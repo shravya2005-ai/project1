@@ -10,7 +10,11 @@ class VectorStore:
         self.persist_dir = str(persist_dir)
         self.collection_name = collection_name
         self.client = chromadb.PersistentClient(path=self.persist_dir)
-        self.collection = self.client.get_or_create_collection(name=self.collection_name)
+        self.collection = self.client.get_or_create_collection(
+            name=self.collection_name,
+            metadata={"hnsw:space": "cosine"},
+        )
+
 
     def add_chunks(self, chunks: List[Dict]) -> int:
         """Embeds and indexes document chunks in ChromaDB."""

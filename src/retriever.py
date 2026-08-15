@@ -26,25 +26,34 @@ class RAGRetriever:
             return []
 
         processed_hits = []
+        all_hits = []
         for hit in raw_hits:
             distance = hit.get("distance", 1.0)
-            # Distance to similarity calculation
-            # For normalized embeddings in Chroma, cosine distance = 1 - cosine_similarity
-            similarity = max(0.0, min(1.0, 1.0 - distance)) if distance <= 1.0 else max(0.0, 1.0 / (1.0 + distance))
-            
+            # Calculate cosine similarity score (0.0 to 1.0)
+            if distance <= 1.0:
+                similarity = max(0.0, min(1.0, 1.0 - distance))
+            else:
+                similarity = max(0.0, min(1.0, 1.0 - (distance / 2.0)))
+
             hit_data = {
                 "document": hit["document"],
                 "metadata": hit["metadata"],
                 "distance": distance,
                 "similarity": similarity,
             }
+            all_hits.append(hit_data)
 
             if not filter_threshold or similarity >= relevance_threshold:
                 processed_hits.append(hit_data)
 
+        # Fallback to top matches if threshold filtering was overly strict but document content exists
+        if not processed_hits and all_hits:
+            processed_hits = all_hits[:max(1, top_k // 2)]
+
         # Sort by highest similarity first
         processed_hits.sort(key=lambda x: x["similarity"], reverse=True)
         return processed_hits
+
 
     def format_context(self, hits: List[Dict]) -> Tuple[str, List[Dict]]:
         """Formats retrieved hits into a clean context string for LLM prompts and extracts sources list."""

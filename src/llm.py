@@ -73,61 +73,50 @@ def _synthesize_local_grounded_answer(
 
     sources_str = "\n- ".join(sorted(source_refs)) if source_refs else "- Uploaded Document"
 
-    # STRIP OUT ALL SOURCE HEADER MARKS FROM CONTEXT BEFORE EXTRACTING SENTENCES
-    clean_context = re.sub(r"--- Source:\s*[^-\n]+?(?:\s*\|\s*Page:\s*\d+)?(?:\s*\(.*?\))?\s*---", "", context)
+    # STRIP OUT ALL SOURCE HEADER LINES FROM CONTEXT BEFORE EXTRACTING SENTENCES
+    clean_context = re.sub(r"--- Source:[^\n]+?---", "", context)
+    clean_context = re.sub(r"Source:[^\n]+?(\n|$)", "", clean_context)
     clean_context = re.sub(r"\n{3,}", "\n\n", clean_context).strip()
 
-    # Split clean_context into paragraphs/passages
+    # Split clean_context into paragraphs/passages in vector search order
     raw_passages = [p.strip() for p in clean_context.split("\n\n") if p.strip()]
     if not raw_passages:
         raw_passages = [clean_context.strip()]
 
-    # Score passages based on query keywords overlap
-    q_words = set(re.findall(r"\w+", question.lower())) - {
-        "what", "is", "are", "the", "a", "an", "in", "of", "and", "or", "to", "how", "why", "where", "which", "tell", "me", "about", "explain"
-    }
-
-    scored_passages = []
-    for passage in raw_passages:
-        p_words = set(re.findall(r"\w+", passage.lower()))
-        overlap = len(q_words.intersection(p_words)) if q_words else 1
-        scored_passages.append((overlap, passage))
-
-    scored_passages.sort(key=lambda x: x[0], reverse=True)
-    best_passages = [p for _, p in scored_passages[:4]]
+    # Respect vector similarity ranking order
+    best_passages = raw_passages[:5]
 
     # Determine depth based on answer_length
     length = (answer_length or "Medium").lower()
 
     bullet_points = []
     for passage in best_passages:
-        # Split sentences and clean any residual source tokens
-        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", passage) if len(s.strip()) > 10]
+        # Split sentences and clean any residual source tokens or Markdown bullets
+        sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+|\n+", passage) if len(s.strip()) > 15]
         for sentence in sentences:
-            # Clean leading dashes or weird residual artifacts
-            cleaned_s = re.sub(r"^[-–—\s]+", "", sentence).strip()
-            if cleaned_s and cleaned_s not in bullet_points and not cleaned_s.startswith("Source:"):
+            cleaned_s = re.sub(r"^[-–—*•0-9.]+\s*", "", sentence).strip()
+            if cleaned_s and cleaned_s not in bullet_points and not cleaned_s.lower().startswith("source:"):
                 bullet_points.append(cleaned_s)
 
-            if length == "short" and len(bullet_points) >= 2:
+            if length == "short" and len(bullet_points) >= 3:
                 break
-            if length == "medium" and len(bullet_points) >= 4:
+            if length == "medium" and len(bullet_points) >= 5:
                 break
-            if length == "detailed" and len(bullet_points) >= 7:
+            if length == "detailed" and len(bullet_points) >= 8:
                 break
 
     if not bullet_points:
         fallback_p = best_passages[0] if best_passages else clean_context[:300]
-        bullet_points = [re.sub(r"^[-–—\s]+", "", fallback_p).strip()]
+        bullet_points = [re.sub(r"^[-–—*•0-9.]+\s*", "", fallback_p).strip()]
 
     bullets_markdown = "\n".join([f"- {bp}" for bp in bullet_points])
 
     if length == "short":
-        return f"### Summary Answer\n{bullets_markdown}\n\n**Sources:**\n- {sources_str}"
+        return f"### Key Summary\n{bullets_markdown}\n\n**Sources:**\n- {sources_str}"
     elif length == "detailed":
         return (
-            f"### Overview\nBased on the uploaded document context, here is the detailed answer for: **{question}**\n\n"
-            f"### Key Findings & Information\n{bullets_markdown}\n\n"
+            f"### Detailed Overview\nBased on the uploaded document context, here is the explanation for: **{question}**\n\n"
+            f"### Extracted Findings & Key Points\n{bullets_markdown}\n\n"
             f"### Source References\n- {sources_str}"
         )
     else:
@@ -135,6 +124,7 @@ def _synthesize_local_grounded_answer(
             f"### Answer\n{bullets_markdown}\n\n"
             f"**Sources:**\n- {sources_str}"
         )
+
 
 
 def _answer_with_openai(
