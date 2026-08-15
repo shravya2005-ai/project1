@@ -1,126 +1,202 @@
-import fitz
-import docx
+import uuid
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict
+from typing import Dict, List
 
+import docx
+import pymupdf
 
-def extract_pdf_diagrams(path: Path, max_images: int = 6) -> List[Dict]:
-    if not path.exists() or path.suffix.lower() != ".pdf":
-        return []
-
-    diagrams: List[Dict] = []
-    doc = fitz.open(path)
-    total_pages = min(len(doc), 6)
-
-    for page_num in range(total_pages):
-        page = doc.load_page(page_num)
-        image_refs = page.get_images(full=True)
-        if image_refs:
-            for img_index, img in enumerate(image_refs[:max(1, max_images // max(1, total_pages))]):
-                try:
-                    xref = img[0]
-                    pix = fitz.Pixmap(doc, xref)
-                    if pix.n_channels == 4:
-                        pix = fitz.Pixmap(fitz.csRGB, pix)
-                    image_bytes = pix.tobytes("png")
-                    diagrams.append(
-                        {
-                            "source": path.name,
-                            "page": page_num + 1,
-                            "image_index": img_index + 1,
-                            "image_bytes": image_bytes,
-                        }
-                    )
-                    pix = None
-                except Exception:
-                    continue
-                if len(diagrams) >= max_images:
-                    return diagrams
-
-        if not image_refs or len(diagrams) < max_images:
-            try:
-                page_pix = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
-                diagrams.append(
-                    {
-                        "source": path.name,
-                        "page": page_num + 1,
-                        "image_index": 1,
-                        "image_bytes": page_pix.tobytes("png"),
-                    }
-                )
-            except Exception:
-                continue
-
-        if len(diagrams) >= max_images:
-            break
-
-    return diagrams
+from config import CHUNK_OVERLAP, CHUNK_SIZE
 
 SUPPORTED_EXTENSIONS = ["pdf", "docx", "txt"]
-CHUNK_SIZE = 500
-CHUNK_OVERLAP = 100
 
 
-def _split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP):
-    sentences = text.replace("\n", " ").split(" ")
-    chunks = []
-    current = []
+def _split_text_into_chunks(
+    text: str,
+    chunk_size: int = CHUNK_SIZE,
+    chunk_overlap: int = CHUNK_OVERLAP,
+) -> List[str]:
+    """Recursively splits text by paragraphs, sentences, or characters trying to respect chunk_size."""
+    text = text.strip()
+    if not text:
+        return []
+
+    if len(text) <= chunk_size:
+        return [text]
+
+    paragraphs = text.split("\n\n")
+    chunks: List[str] = []
+    current_chunk: List[str] = []
     current_len = 0
-    for token in sentences:
-        if not token:
+
+    for para in paragraphs:
+        para_trimmed = para.strip()
+        if not para_trimmed:
             continue
-        current.append(token)
-        current_len += len(token) + 1
-        if current_len >= chunk_size:
-            chunks.append(" ".join(current).strip())
-            current = current[-overlap // 5 :]
-            current_len = sum(len(t) + 1 for t in current)
-    if current:
-        chunks.append(" ".join(current).strip())
+
+        if len(para_trimmed) > chunk_size:
+            # Paragraph itself is too large, split by single lines or sentences
+            sub_lines = para_trimmed.replace(". ", ".\n").split("\n")
+            for line in sub_lines:
+                line_trimmed = line.strip()
+                if not line_trimmed:
+                    continue
+
+                if current_len + len(line_trimmed) + 1 > chunk_size and current_chunk:
+                    chunk_text = "\n".join(current_chunk).strip()
+                    if chunk_text:
+                        chunks.append(chunk_text)
+                    # Keep overlap
+                    overlap_len = 0
+                    new_current = []
+                    for prev_item in reversed(current_chunk):
+                        if overlap_len + len(prev_item) <= chunk_overlap:
+                            new_current.insert(0, prev_item)
+                            overlap_len += len(prev_item) + 1
+                        else:
+                            break
+                    current_chunk = new_current
+                    current_len = sum(len(x) + 1 for x in current_chunk)
+
+                current_chunk.append(line_trimmed)
+                current_len += len(line_trimmed) + 1
+        else:
+            if current_len + len(para_trimmed) + 1 > chunk_size and current_chunk:
+                chunk_text = "\n\n".join(current_chunk).strip()
+                if chunk_text:
+                    chunks.append(chunk_text)
+                # Keep overlap
+                overlap_len = 0
+                new_current = []
+                for prev_item in reversed(current_chunk):
+                    if overlap_len + len(prev_item) <= chunk_overlap:
+                        new_current.insert(0, prev_item)
+                        overlap_len += len(prev_item) + 1
+                    else:
+                        break
+                current_chunk = new_current
+                current_len = sum(len(x) + 1 for x in current_chunk)
+
+            current_chunk.append(para_trimmed)
+            current_len += len(para_trimmed) + 2
+
+    if current_chunk:
+        chunk_text = "\n\n".join(current_chunk).strip()
+        if chunk_text:
+            chunks.append(chunk_text)
+
     return chunks
 
 
 def _extract_pdf(path: Path) -> List[Dict]:
-    doc = fitz.open(path)
+    """Extracts text from PDF page by page."""
     chunks = []
-    for page_num in range(len(doc)):
-        page = doc.load_page(page_num)
-        text = page.get_text().strip()
-        if not text:
-            continue
-        page_chunks = _split_text(text)
-        for chunk in page_chunks:
-            chunks.append({"document": chunk, "metadata": {"source": path.name, "page": page_num + 1}})
+    chunk_counter = 0
+
+    try:
+        doc = pymupdf.open(path)
+        for page_num in range(len(doc)):
+            page = doc.load_page(page_num)
+            text = page.get_text("text").strip()
+            if not text:
+                continue
+
+            page_chunks = _split_text_into_chunks(text)
+            for chunk in page_chunks:
+                chunk_counter += 1
+                unique_id = f"{path.name}_p{page_num + 1}_c{chunk_counter}_{uuid.uuid4().hex[:6]}"
+                chunks.append(
+                    {
+                        "document": chunk,
+                        "metadata": {
+                            "source": path.name,
+                            "page": page_num + 1,
+                            "chunk_index": chunk_counter,
+                            "chunk_id": unique_id,
+                            "created_at": datetime.now().isoformat(),
+                        },
+                    }
+                )
+        doc.close()
+    except Exception as exc:
+        print(f"Error processing PDF {path}: {exc}")
+
     return chunks
 
 
 def _extract_docx(path: Path) -> List[Dict]:
-    doc = docx.Document(path)
-    text = []
-    for para in doc.paragraphs:
-        if para.text.strip():
-            text.append(para.text.strip())
-    joined = "\n".join(text)
+    """Extracts text from DOCX file."""
     chunks = []
-    for chunk in _split_text(joined):
-        chunks.append({"document": chunk, "metadata": {"source": path.name}})
+    try:
+        doc = docx.Document(path)
+        paragraphs = [para.text.strip() for para in doc.paragraphs if para.text.strip()]
+        full_text = "\n\n".join(paragraphs)
+
+        text_chunks = _split_text_into_chunks(full_text)
+        for i, chunk in enumerate(text_chunks, start=1):
+            unique_id = f"{path.name}_c{i}_{uuid.uuid4().hex[:6]}"
+            chunks.append(
+                {
+                    "document": chunk,
+                    "metadata": {
+                        "source": path.name,
+                        "page": 1,
+                        "chunk_index": i,
+                        "chunk_id": unique_id,
+                        "created_at": datetime.now().isoformat(),
+                    },
+                }
+            )
+    except Exception as exc:
+        print(f"Error processing DOCX {path}: {exc}")
+
     return chunks
 
 
 def _extract_txt(path: Path) -> List[Dict]:
-    text = path.read_text(encoding="utf-8", errors="ignore")
+    """Extracts text from UTF-8 text file."""
     chunks = []
-    for chunk in _split_text(text):
-        chunks.append({"document": chunk, "metadata": {"source": path.name}})
+    try:
+        text = path.read_text(encoding="utf-8", errors="ignore").strip()
+        if not text:
+            return []
+
+        text_chunks = _split_text_into_chunks(text)
+        for i, chunk in enumerate(text_chunks, start=1):
+            unique_id = f"{path.name}_c{i}_{uuid.uuid4().hex[:6]}"
+            chunks.append(
+                {
+                    "document": chunk,
+                    "metadata": {
+                        "source": path.name,
+                        "page": 1,
+                        "chunk_index": i,
+                        "chunk_id": unique_id,
+                        "created_at": datetime.now().isoformat(),
+                    },
+                }
+            )
+    except Exception as exc:
+        print(f"Error processing TXT {path}: {exc}")
+
     return chunks
 
 
 def extract_texts_from_file(path: Path) -> List[Dict]:
-    suffix = path.suffix.lower().strip(".")
+    """Extracts text and splits into chunks with metadata for supported document types."""
+    if isinstance(path, str):
+        path = Path(path)
+
+    if not path.exists():
+        return []
+
+    suffix = path.suffix.lower().lstrip(".")
     if suffix == "pdf":
         return _extract_pdf(path)
     if suffix == "docx":
         return _extract_docx(path)
     if suffix == "txt":
         return _extract_txt(path)
+
     return []
+
