@@ -32,7 +32,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Custom Glassmorphic & Modern Styling (CSS)
+# Custom Light Theme Styling (CSS)
 st.markdown(
     """
     <style>
@@ -42,28 +42,28 @@ st.markdown(
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
     
-    /* Main app dark theme gradient */
+    /* Main app light theme background */
     .stApp {
-        background: radial-gradient(circle at top right, #1e1b4b 0%, #0f172a 40%, #020617 100%);
-        color: #f8fafc;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+        color: #0f172a;
     }
     
-    /* Glassmorphic Sidebar */
+    /* Clean Light Sidebar */
     section[data-testid="stSidebar"] {
-        background: rgba(15, 23, 42, 0.85) !important;
-        backdrop-filter: blur(16px);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0 !important;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.02);
     }
     
     /* Hero Header */
     .hero-container {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(168, 85, 247, 0.12) 50%, rgba(236, 72, 153, 0.08) 100%);
-        border: 1px solid rgba(139, 92, 246, 0.25);
-        border-radius: 20px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid #e2e8f0;
+        border-top: 4px solid #4f46e5;
+        border-radius: 16px;
         padding: 1.8rem 2.2rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     }
     
     .hero-title {
@@ -71,13 +71,14 @@ st.markdown(
         font-weight: 800;
         letter-spacing: -0.02em;
         margin-bottom: 0.4rem;
-        background: linear-gradient(90deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+        color: #1e1b4b;
+        background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 50%, #2563eb 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
     
     .hero-subtitle {
-        color: #94a3b8;
+        color: #475569;
         font-size: 1.02rem;
         margin-bottom: 1.2rem;
         line-height: 1.5;
@@ -92,50 +93,52 @@ st.markdown(
     }
     
     .stat-chip {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
         border-radius: 30px;
         padding: 0.35rem 0.9rem;
         font-size: 0.82rem;
         font-weight: 600;
-        color: #cbd5e1;
+        color: #334155;
         display: inline-flex;
         align-items: center;
         gap: 0.4rem;
     }
     
     .stat-chip-active {
-        background: rgba(99, 102, 241, 0.2);
-        border-color: rgba(129, 140, 248, 0.4);
-        color: #a5b4fc;
+        background: #e0e7ff;
+        border-color: #c7d2fe;
+        color: #3730a3;
     }
     
     /* Quick Prompt Chips */
     .prompt-chip {
-        background: rgba(30, 41, 59, 0.8);
-        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
         border-radius: 12px;
         padding: 0.6rem 1rem;
         font-size: 0.88rem;
-        color: #e2e8f0;
+        color: #1e293b;
         cursor: pointer;
         transition: all 0.2s ease;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
     }
     
     /* Citation Cards */
     .citation-card {
-        background: rgba(15, 23, 42, 0.6);
-        border: 1px solid rgba(99, 102, 241, 0.2);
-        border-left: 4px solid #6366f1;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #4f46e5;
         border-radius: 10px;
         padding: 0.9rem 1.1rem;
         margin-top: 0.6rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
     
     .citation-meta {
-        font-size: 0.82rem;
+        font-size: 0.84rem;
         font-weight: 700;
-        color: #818cf8;
+        color: #4f46e5;
         display: flex;
         justify-content: space-between;
         margin-bottom: 0.4rem;
@@ -143,57 +146,59 @@ st.markdown(
     
     .citation-snippet {
         font-size: 0.88rem;
-        color: #cbd5e1;
+        color: #334155;
         font-style: italic;
         line-height: 1.5;
     }
     
     /* Progress bar style in Streamlit */
     .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #6366f1, #a855f7);
+        background: linear-gradient(90deg, #4f46e5, #7c3aed);
     }
     
     /* Tabs customization */
     button[data-baseweb="tab"] {
         font-weight: 700 !important;
         font-size: 0.95rem !important;
-        color: #94a3b8 !important;
+        color: #64748b !important;
         border-radius: 8px !important;
         padding: 0.6rem 1.2rem !important;
     }
     
     button[aria-selected="true"] {
-        color: #ffffff !important;
-        background: rgba(99, 102, 241, 0.2) !important;
-        border-bottom: 2px solid #818cf8 !important;
+        color: #4f46e5 !important;
+        background: #e0e7ff !important;
+        border-bottom: 2px solid #4f46e5 !important;
     }
     
     /* Input Field Styling */
     div[data-baseweb="input"] {
         border-radius: 12px !important;
-        background-color: rgba(30, 41, 59, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        background-color: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important;
     }
     
     /* Custom buttons */
     .stButton > button {
         border-radius: 10px;
         font-weight: 600;
-        background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
         color: white;
         border: none;
-        box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
         transition: all 0.2s ease;
     }
     
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.45);
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
 
 # Initialize Core Services
 vector_store = VectorStore()
@@ -211,8 +216,8 @@ if "pending_prompt" not in st.session_state:
     st.session_state.pending_prompt = None
 
 # SIDEBAR: File Upload & Management Workspace
-st.sidebar.markdown("<h2 style='font-size: 1.3rem; font-weight: 800; color: #f1f5f9; margin-bottom: 0.2rem;'>📁 Knowledge Workspace</h2>", unsafe_allow_html=True)
-st.sidebar.markdown("<p style='font-size: 0.85rem; color: #94a3b8; margin-bottom: 1rem;'>Upload PDF, DOCX, or TXT documents to build vector index.</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<h2 style='font-size: 1.3rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;'>📁 Knowledge Workspace</h2>", unsafe_allow_html=True)
+st.sidebar.markdown("<p style='font-size: 0.85rem; color: #475569; margin-bottom: 1rem;'>Upload PDF, DOCX, or TXT documents to build vector index.</p>", unsafe_allow_html=True)
 
 with st.sidebar.expander("⬆️ Upload & Index Documents", expanded=True):
     uploaded_files = st.file_uploader(
@@ -252,7 +257,7 @@ with st.sidebar.expander("⬆️ Upload & Index Documents", expanded=True):
             st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("<h3 style='font-size: 1rem; font-weight: 700; color: #e2e8f0;'>📚 Active Documents</h3>", unsafe_allow_html=True)
+st.sidebar.markdown("<h3 style='font-size: 1rem; font-weight: 700; color: #1e293b;'>📚 Active Documents</h3>", unsafe_allow_html=True)
 
 docs = st.session_state.documents
 if not docs:
@@ -261,7 +266,7 @@ else:
     for doc in docs:
         col1, col2 = st.sidebar.columns([4, 1])
         size_kb = doc["size_bytes"] / 1024.0 if doc["size_bytes"] else 0
-        col1.markdown(f"📄 **{doc['name']}**  \n`<span style='color: #94a3b8; font-size: 0.78rem;'>{size_kb:.1f} KB • {doc['chunk_count']} chunks</span>`", unsafe_allow_html=True)
+        col1.markdown(f"📄 **{doc['name']}**  \n`<span style='color: #64748b; font-size: 0.78rem;'>{size_kb:.1f} KB • {doc['chunk_count']} chunks</span>`", unsafe_allow_html=True)
         if col2.button("🗑️", key=f"del_{doc['name']}", help=f"Delete {doc['name']}"):
             vector_store.delete_by_source(doc["name"])
             chat_history.delete_document(doc["name"])
@@ -270,7 +275,8 @@ else:
             st.rerun()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("<h3 style='font-size: 1rem; font-weight: 700; color: #e2e8f0;'>⚙️ Model & Controls</h3>", unsafe_allow_html=True)
+st.sidebar.markdown("<h3 style='font-size: 1rem; font-weight: 700; color: #1e293b;'>⚙️ Model & Controls</h3>", unsafe_allow_html=True)
+
 
 # Backend Selection
 backend_choice = st.sidebar.selectbox(
