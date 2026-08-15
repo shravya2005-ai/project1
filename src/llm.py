@@ -54,11 +54,11 @@ def _synthesize_local_grounded_answer(
     sources: Optional[List[Dict]] = None,
     answer_length: str = "Medium",
 ) -> str:
-    """Dynamically synthesizes a grounded answer from retrieved context passages without fake/hardcoded strings."""
+    """Dynamically synthesizes a clean grounded answer from retrieved context passages without leaking header tags."""
     if not context.strip():
         return "The information is not available in the uploaded documents."
 
-    # Extract source names and page numbers from context headers or sources parameter
+    # Extract source names and page numbers from sources parameter or context headers
     source_refs = set()
     if sources:
         for s in sources:
@@ -73,14 +73,18 @@ def _synthesize_local_grounded_answer(
 
     sources_str = "\n- ".join(sorted(source_refs)) if source_refs else "- Uploaded Document"
 
-    # Split context into paragraphs/sentences
-    raw_passages = [p.strip() for p in context.split("\n\n") if p.strip() and not p.startswith("--- Source:")]
+    # STRIP OUT ALL SOURCE HEADER MARKS FROM CONTEXT BEFORE EXTRACTING SENTENCES
+    clean_context = re.sub(r"--- Source:\s*[^-\n]+?(?:\s*\|\s*Page:\s*\d+)?(?:\s*\(.*?\))?\s*---", "", context)
+    clean_context = re.sub(r"\n{3,}", "\n\n", clean_context).strip()
+
+    # Split clean_context into paragraphs/passages
+    raw_passages = [p.strip() for p in clean_context.split("\n\n") if p.strip()]
     if not raw_passages:
-        raw_passages = [context.strip()]
+        raw_passages = [clean_context.strip()]
 
     # Score passages based on query keywords overlap
     q_words = set(re.findall(r"\w+", question.lower())) - {
-        "what", "is", "are", "the", "a", "an", "in", "of", "and", "or", "to", "how", "why", "where", "which", "tell", "me", "about"
+        "what", "is", "are", "the", "a", "an", "in", "of", "and", "or", "to", "how", "why", "where", "which", "tell", "me", "about", "explain"
     }
 
     scored_passages = []
@@ -97,10 +101,14 @@ def _synthesize_local_grounded_answer(
 
     bullet_points = []
     for passage in best_passages:
+        # Split sentences and clean any residual source tokens
         sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", passage) if len(s.strip()) > 10]
         for sentence in sentences:
-            if sentence not in bullet_points:
-                bullet_points.append(sentence)
+            # Clean leading dashes or weird residual artifacts
+            cleaned_s = re.sub(r"^[-–—\s]+", "", sentence).strip()
+            if cleaned_s and cleaned_s not in bullet_points and not cleaned_s.startswith("Source:"):
+                bullet_points.append(cleaned_s)
+
             if length == "short" and len(bullet_points) >= 2:
                 break
             if length == "medium" and len(bullet_points) >= 4:
@@ -109,7 +117,8 @@ def _synthesize_local_grounded_answer(
                 break
 
     if not bullet_points:
-        bullet_points = [best_passages[0]] if best_passages else [context[:300]]
+        fallback_p = best_passages[0] if best_passages else clean_context[:300]
+        bullet_points = [re.sub(r"^[-–—\s]+", "", fallback_p).strip()]
 
     bullets_markdown = "\n".join([f"- {bp}" for bp in bullet_points])
 
@@ -133,10 +142,12 @@ def _answer_with_openai(
     context: str,
     answer_length: str = "Medium",
     sources: Optional[List[Dict]] = None,
+    api_key: Optional[str] = None,
 ) -> str:
     """Generates an answer using the OpenAI API."""
-    if not OPENAI_API_KEY:
-        return "OpenAI API key is missing. Set OPENAI_API_KEY in your .env file or change LLM_BACKEND."
+    key = api_key or OPENAI_API_KEY
+    if not key or key == "your_openai_api_key_here":
+        return "OpenAI API key is missing. Set OPENAI_API_KEY in your .env file or enter it in the sidebar."
 
     prompt = PROMPT_TEMPLATE.format(context=context, question=question, answer_length=answer_length)
 
@@ -144,7 +155,7 @@ def _answer_with_openai(
         import openai
 
         if hasattr(openai, "OpenAI"):
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            client = openai.OpenAI(api_key=key)
             response = client.chat.completions.create(
                 model=OPENAI_MODEL,
                 messages=[
@@ -156,7 +167,7 @@ def _answer_with_openai(
             )
             return _clean_text(response.choices[0].message.content)
         else:
-            openai.api_key = OPENAI_API_KEY
+            openai.api_key = key
             response = openai.ChatCompletion.create(
                 model=OPENAI_MODEL,
                 messages=[
@@ -173,7 +184,7 @@ def _answer_with_openai(
         if "credit" in err_msg or "quota" in err_msg or "billing" in err_msg:
             return "OpenAI API error: Insufficient quota or billing issue. Falling back to local synthesizer."
         if "api_key" in err_msg or "authentication" in err_msg or "invalid" in err_msg:
-            return "OpenAI API error: Invalid API Key. Please verify OPENAI_API_KEY in .env."
+            return "OpenAI API error: Invalid API Key. Please verify OPENAI_API_KEY."
         return f"OpenAI generation error: {exc}"
 
 
@@ -181,10 +192,12 @@ def _answer_with_gemini(
     question: str,
     context: str,
     answer_length: str = "Medium",
+    api_key: Optional[str] = None,
 ) -> str:
     """Generates an answer using Google Gemini API."""
-    if not GEMINI_API_KEY:
-        return "Google Gemini API key is missing. Set GEMINI_API_KEY in your .env file."
+    key = api_key or GEMINI_API_KEY
+    if not key or key == "your_gemini_api_key_here":
+        return "Google Gemini API key is missing. Set GEMINI_API_KEY in your .env file or enter it in the sidebar."
 
     prompt = f"{SYSTEM_PROMPT}\n\n" + PROMPT_TEMPLATE.format(
         context=context, question=question, answer_length=answer_length
@@ -195,7 +208,7 @@ def _answer_with_gemini(
         try:
             import google.generativeai as genai
 
-            genai.configure(api_key=GEMINI_API_KEY)
+            genai.configure(api_key=key)
             model = genai.GenerativeModel(GEMINI_MODEL)
             response = model.generate_content(prompt)
             if response and response.text:
@@ -204,7 +217,7 @@ def _answer_with_gemini(
             pass
 
         # 2. Fallback to direct HTTP API request
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={key}"
         headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
@@ -221,7 +234,6 @@ def _answer_with_gemini(
             return "No text returned from Gemini API."
     except Exception as exc:
         return f"Gemini API error: {exc}"
-
 
 
 def _answer_with_ollama(
@@ -260,7 +272,10 @@ def answer_question(
     sources: Optional[List[Dict]] = None,
     answer_length: str = "Medium",
     backend: Optional[str] = None,
+    api_key: Optional[str] = None,
+    **kwargs,
 ) -> str:
+
     """Main LLM answer generation entrypoint routing to specified backend with robust fallbacks."""
     if not question or not question.strip():
         return "Please enter a valid question."
@@ -271,14 +286,13 @@ def answer_question(
     active_backend = (backend or LLM_BACKEND).lower()
 
     if active_backend == "openai":
-        res = _answer_with_openai(question, context, answer_length=answer_length, sources=sources)
+        res = _answer_with_openai(question, context, answer_length=answer_length, sources=sources, api_key=api_key)
         if not (res.startswith("OpenAI API error") or res.startswith("OpenAI API key is missing")):
             return res
-        # Fallback if OpenAI key is missing or fails
         return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
 
     elif active_backend == "gemini":
-        res = _answer_with_gemini(question, context, answer_length=answer_length)
+        res = _answer_with_gemini(question, context, answer_length=answer_length, api_key=api_key)
         if not (res.startswith("Gemini API error") or res.startswith("Google Gemini API key is missing")):
             return res
         return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
@@ -291,4 +305,3 @@ def answer_question(
 
     # Local backend / fallback
     return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
-

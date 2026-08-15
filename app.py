@@ -14,11 +14,15 @@ from config import (
     TOP_K,
     UPLOAD_DIR,
 )
+import importlib
+import src.llm
+importlib.reload(src.llm)
+from src.llm import answer_question
 from src.chat_history import ChatHistory
 from src.document_processor import SUPPORTED_EXTENSIONS, extract_texts_from_file
-from src.llm import answer_question
 from src.retriever import RAGRetriever
 from src.vector_store import VectorStore
+
 
 # Set Streamlit Page Configuration
 st.set_page_config(
@@ -276,10 +280,23 @@ backend_choice = st.sidebar.selectbox(
     help="Select LLM provider. 'local' works offline without API keys.",
 )
 
-if backend_choice == "openai" and not OPENAI_API_KEY:
-    st.sidebar.warning("⚠️ OPENAI_API_KEY not set in .env. Falling back to Local Grounded mode.")
-elif backend_choice == "gemini" and not GEMINI_API_KEY:
-    st.sidebar.warning("⚠️ GEMINI_API_KEY not set in .env. Falling back to Local Grounded mode.")
+user_api_key = None
+if backend_choice == "openai":
+    if not OPENAI_API_KEY or OPENAI_API_KEY == "your_openai_api_key_here":
+        user_api_key = st.sidebar.text_input("OpenAI API Key", type="password", help="Paste your sk-... key here")
+        if not user_api_key:
+            st.sidebar.warning("⚠️ OPENAI_API_KEY not set. Using Local Grounded Mode.")
+    else:
+        user_api_key = OPENAI_API_KEY
+
+elif backend_choice == "gemini":
+    if not GEMINI_API_KEY or GEMINI_API_KEY == "your_gemini_api_key_here":
+        user_api_key = st.sidebar.text_input("Gemini API Key", type="password", help="Paste your AIza... key here")
+        if not user_api_key:
+            st.sidebar.warning("⚠️ GEMINI_API_KEY not set. Using Local Grounded Mode.")
+    else:
+        user_api_key = GEMINI_API_KEY
+
 
 # Mode & Style Toggles
 answer_only_docs = st.sidebar.checkbox(
@@ -402,7 +419,9 @@ with tab_chat:
                             sources=sources,
                             answer_length=answer_length_choice,
                             backend=backend_choice,
+                            api_key=user_api_key,
                         )
+
 
                 # Render assistant response
                 st.markdown(answer)
