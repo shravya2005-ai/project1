@@ -186,6 +186,12 @@ backend_choice = st.sidebar.selectbox(
     help="Select LLM provider. 'local' works offline without API keys.",
 )
 
+if backend_choice == "openai" and not OPENAI_API_KEY:
+    st.sidebar.warning("⚠️ OPENAI_API_KEY not set in .env. Falling back to Local Grounded mode.")
+elif backend_choice == "gemini" and not GEMINI_API_KEY:
+    st.sidebar.warning("⚠️ GEMINI_API_KEY not set in .env. Falling back to Local Grounded mode.")
+
+
 # Mode & Style Toggles
 answer_only_docs = st.sidebar.checkbox(
     "Answer ONLY from documents",

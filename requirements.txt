@@ -4,6 +4,7 @@ python-docx
 sentence-transformers
 chromadb
 openai
+google-generativeai
 python-dotenv
 langchain
 transformers

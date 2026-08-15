@@ -191,6 +191,19 @@ def _answer_with_gemini(
     )
 
     try:
+        # 1. Try official google-generativeai SDK if installed
+        try:
+            import google.generativeai as genai
+
+            genai.configure(api_key=GEMINI_API_KEY)
+            model = genai.GenerativeModel(GEMINI_MODEL)
+            response = model.generate_content(prompt)
+            if response and response.text:
+                return _clean_text(response.text)
+        except Exception:
+            pass
+
+        # 2. Fallback to direct HTTP API request
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
         headers = {"Content-Type": "application/json"}
         payload = {
@@ -208,6 +221,7 @@ def _answer_with_gemini(
             return "No text returned from Gemini API."
     except Exception as exc:
         return f"Gemini API error: {exc}"
+
 
 
 def _answer_with_ollama(
@@ -258,14 +272,14 @@ def answer_question(
 
     if active_backend == "openai":
         res = _answer_with_openai(question, context, answer_length=answer_length, sources=sources)
-        if not res.startswith("OpenAI API error"):
+        if not (res.startswith("OpenAI API error") or res.startswith("OpenAI API key is missing")):
             return res
-        # Fallback if OpenAI key fails
+        # Fallback if OpenAI key is missing or fails
         return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
 
     elif active_backend == "gemini":
         res = _answer_with_gemini(question, context, answer_length=answer_length)
-        if not res.startswith("Gemini API error"):
+        if not (res.startswith("Gemini API error") or res.startswith("Google Gemini API key is missing")):
             return res
         return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
 
@@ -277,3 +291,4 @@ def answer_question(
 
     # Local backend / fallback
     return _synthesize_local_grounded_answer(question, context, sources=sources, answer_length=answer_length)
+
